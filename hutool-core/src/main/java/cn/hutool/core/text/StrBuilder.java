@@ -33,7 +33,7 @@ public class StrBuilder implements CharSequence, Appendable, Serializable {
 	/**
 	 * 创建字符串构建器
 	 *
-	 * @return {@link StrBuilder}
+	 * @return this
 	 */
 	public static StrBuilder create() {
 		return new StrBuilder();
@@ -43,7 +43,7 @@ public class StrBuilder implements CharSequence, Appendable, Serializable {
 	 * 创建字符串构建器
 	 *
 	 * @param initialCapacity 初始容量
-	 * @return {@link StrBuilder}
+	 * @return this
 	 */
 	public static StrBuilder create(int initialCapacity) {
 		return new StrBuilder(initialCapacity);
@@ -53,7 +53,7 @@ public class StrBuilder implements CharSequence, Appendable, Serializable {
 	 * 创建字符串构建器
 	 *
 	 * @param strs 初始字符串
-	 * @return {@link StrBuilder}
+	 * @return this
 	 * @since 4.0.1
 	 */
 	public static StrBuilder create(CharSequence... strs) {
@@ -462,6 +462,9 @@ public class StrBuilder implements CharSequence, Appendable, Serializable {
 
 	@Override
 	public char charAt(int index) {
+		if(index < 0){
+			index = this.position + index;
+		}
 		if ((index < 0) || (index > this.position)) {
 			throw new StringIndexOutOfBoundsException(index);
 		}

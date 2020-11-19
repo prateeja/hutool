@@ -483,13 +483,7 @@ public class URLUtil {
 	 * @throws UtilException 包装URISyntaxException
 	 */
 	public static String getPath(String uriStr) {
-		URI uri;
-		try {
-			uri = new URI(uriStr);
-		} catch (URISyntaxException e) {
-			throw new UtilException(e);
-		}
-		return uri.getPath();
+		return toURI(uriStr).getPath();
 	}
 
 	/**
@@ -509,7 +503,7 @@ public class URLUtil {
 		String path = null;
 		try {
 			// URL对象的getPath方法对于包含中文或空格的问题
-			path = URLUtil.toURI(url).getPath();
+			path = toURI(url).getPath();
 		} catch (UtilException e) {
 			// ignore
 		}
@@ -569,7 +563,7 @@ public class URLUtil {
 			location = encode(location);
 		}
 		try {
-			return new URI(location);
+			return new URI(StrUtil.trim(location));
 		} catch (URISyntaxException e) {
 			throw new UtilException(e);
 		}
@@ -713,7 +707,9 @@ public class URLUtil {
 			//noinspection ConstantConditions
 			body = body.replaceAll("^[\\\\/]+", StrUtil.EMPTY);
 			// 替换多个\或/为单个/
-			body = body.replace("\\", "/").replaceAll("//+", "/");
+			body = body.replace("\\", "/");
+			//issue#I25MZL，双斜杠在URL中是允许存在的，不做替换
+			//.replaceAll("//+", "/");
 		}
 
 		final int pathSepIndex = StrUtil.indexOf(body, '/');
@@ -788,7 +784,7 @@ public class URLUtil {
 	 * @since 5.3.11
 	 */
 	public static String getDataUriBase64(String mimeType, String data) {
-		return getDataUri(mimeType, null, "BASE64", data);
+		return getDataUri(mimeType, null, "base64", data);
 	}
 
 	/**

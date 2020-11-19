@@ -5,7 +5,10 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.exceptions.DependencyException;
 import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.poi.excel.sax.handler.RowHandler;
 import cn.hutool.poi.exceptions.POIException;
+import org.apache.poi.hssf.eventusermodel.FormatTrackingHSSFListener;
+import org.apache.poi.hssf.record.CellValueRecordInterface;
 import org.apache.poi.ooxml.util.SAXHelper;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.model.SharedStringsTable;
@@ -73,9 +76,9 @@ public class ExcelSaxUtil {
 				}
 				break;
 			case NUMBER:
-				try{
+				try {
 					result = getNumberValue(value, numFmtString);
-				}catch (NumberFormatException e){
+				} catch (NumberFormatException e) {
 					result = value;
 				}
 				break;
@@ -150,6 +153,7 @@ public class ExcelSaxUtil {
 	public static void readFrom(InputStream xmlDocStream, ContentHandler handler) throws DependencyException, POIException, IORuntimeException {
 		XMLReader xmlReader;
 		try {
+//			xmlReader = XMLReaderFactory.createXMLReader();
 			//noinspection deprecation
 			xmlReader = SAXHelper.newXMLReader();
 		} catch (SAXException | ParserConfigurationException e) {
@@ -167,6 +171,19 @@ public class ExcelSaxUtil {
 		} catch (SAXException e) {
 			throw new POIException(e);
 		}
+	}
+
+	/**
+	 * 判断数字Record中是否为日期格式
+	 * @param cell 单元格记录
+	 * @param formatListener {@link FormatTrackingHSSFListener}
+	 * @return 是否为日期格式
+	 * @since 5.4.8
+	 */
+	public static boolean isDateFormat(CellValueRecordInterface cell, FormatTrackingHSSFListener formatListener){
+		final int formatIndex = formatListener.getFormatIndex(cell);
+		final String formatString = formatListener.getFormatString(cell);
+		return org.apache.poi.ss.usermodel.DateUtil.isADateFormat(formatIndex, formatString);
 	}
 
 	/**
@@ -189,6 +206,45 @@ public class ExcelSaxUtil {
 	 */
 	public static DateTime getDateValue(double value) {
 		return DateUtil.date(org.apache.poi.ss.usermodel.DateUtil.getJavaDate(value, false));
+	}
+
+	/**
+	 * 创建 {@link ExcelSaxReader}
+	 *
+	 * @param isXlsx     是否为xlsx格式（07格式）
+	 * @param rowHandler 行处理器
+	 * @return {@link ExcelSaxReader}
+	 * @since 5.4.4
+	 */
+	public static ExcelSaxReader<?> createSaxReader(boolean isXlsx, RowHandler rowHandler) {
+		return isXlsx
+				? new Excel07SaxReader(rowHandler)
+				: new Excel03SaxReader(rowHandler);
+	}
+
+	/**
+	 * 在Excel03 sax读取中获取日期或数字类型的结果值
+	 * @param cell 记录单元格
+	 * @param value 值
+	 * @param formatListener {@link FormatTrackingHSSFListener}
+	 * @return 值，可能为Date或Double或Long
+	 * @since 5.5.0
+	 */
+	public static Object getNumberOrDateValue(CellValueRecordInterface cell, double value, FormatTrackingHSSFListener formatListener){
+		Object result;
+		if(ExcelSaxUtil.isDateFormat(cell, formatListener)){
+			// 可能为日期格式
+			result = ExcelSaxUtil.getDateValue(value);
+		} else {
+			final long longPart = (long) value;
+			// 对于无小数部分的数字类型，转为Long，否则保留原数字
+			if (((double) longPart) == value) {
+				result = longPart;
+			} else {
+				result = value;
+			}
+		}
+		return result;
 	}
 
 	/**

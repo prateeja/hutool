@@ -1,9 +1,11 @@
 package cn.hutool.json;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.convert.ConvertException;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Dict;
+import cn.hutool.core.lang.TypeReference;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.json.test.bean.Exam;
 import cn.hutool.json.test.bean.JsonNode;
@@ -24,6 +26,12 @@ import java.util.Map;
  *
  */
 public class JSONArrayTest {
+
+	@Test(expected = JSONException.class)
+	public void createJSONArrayTest(){
+		// 集合类不支持转为JSONObject
+		new JSONArray(new JSONObject(), JSONConfig.create());
+	}
 
 	@Test
 	public void addTest() {
@@ -149,6 +157,14 @@ public class JSONArrayTest {
 		Assert.assertNull(list.get(0));
 		Assert.assertEquals("avalue", list.get(1).getAkey());
 		Assert.assertEquals("bvalue", list.get(1).getBkey());
+	}
+
+	@Test(expected = ConvertException.class)
+	public void toListWithErrorTest(){
+		String json = "[['aaa',{'akey':'avalue','bkey':'bvalue'}]]";
+		JSONArray ja = JSONUtil.parseArray(json);
+
+		List<List<KeyBean>> list = ja.toBean(new TypeReference<List<List<KeyBean>>>() {});
 	}
 
 	@Test

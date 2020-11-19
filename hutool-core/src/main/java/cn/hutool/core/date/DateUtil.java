@@ -21,13 +21,7 @@ import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
@@ -129,11 +123,10 @@ public class DateUtil extends CalendarUtil {
 	/**
 	 * 当前时间的时间戳
 	 *
-	 * @param isNano 是否为高精度时间
 	 * @return 时间
 	 */
-	public static long current(boolean isNano) {
-		return isNano ? System.nanoTime() : System.currentTimeMillis();
+	public static long current() {
+		return System.currentTimeMillis();
 	}
 
 	/**
@@ -220,9 +213,14 @@ public class DateUtil extends CalendarUtil {
 
 	/**
 	 * 获得指定日期是所在年份的第几周<br>
+	 * 此方法返回值与一周的第一天有关，比如：<br>
+	 * 2016年1月3日为周日，如果一周的第一天为周日，那这天是第二周（返回2）<br>
+	 * 如果一周的第一天为周一，那这天是第一周（返回1）<br>
+	 * 跨年的那个星期得到的结果总是1
 	 *
 	 * @param date 日期
 	 * @return 周
+	 * @see DateTime#setFirstDayOfWeek(Week)
 	 */
 	public static int weekOfYear(Date date) {
 		return DateTime.of(date).weekOfYear();
@@ -1411,7 +1409,7 @@ public class DateUtil extends CalendarUtil {
 	 * @param level     级别，按照天、小时、分、秒、毫秒分为5个等级
 	 * @return XX天XX小时XX分XX秒
 	 */
-	public static String formatBetween(Date beginDate, Date endDate, BetweenFormater.Level level) {
+	public static String formatBetween(Date beginDate, Date endDate, BetweenFormatter.Level level) {
 		return formatBetween(between(beginDate, endDate, DateUnit.MS), level);
 	}
 
@@ -1434,8 +1432,8 @@ public class DateUtil extends CalendarUtil {
 	 * @param level     级别，按照天、小时、分、秒、毫秒分为5个等级
 	 * @return XX天XX小时XX分XX秒XX毫秒
 	 */
-	public static String formatBetween(long betweenMs, BetweenFormater.Level level) {
-		return new BetweenFormater(betweenMs, level).format();
+	public static String formatBetween(long betweenMs, BetweenFormatter.Level level) {
+		return new BetweenFormatter(betweenMs, level).format();
 	}
 
 	/**
@@ -1446,7 +1444,7 @@ public class DateUtil extends CalendarUtil {
 	 * @since 3.0.1
 	 */
 	public static String formatBetween(long betweenMs) {
-		return new BetweenFormater(betweenMs, BetweenFormater.Level.MILLISECOND).format();
+		return new BetweenFormatter(betweenMs, BetweenFormatter.Level.MILLISECOND).format();
 	}
 
 	/**
@@ -1914,6 +1912,18 @@ public class DateUtil extends CalendarUtil {
 	 */
 	public static int lengthOfYear(int year) {
 		return Year.of(year).length();
+	}
+
+	/**
+	 * 获得指定月份的总天数
+	 *
+	 * @param month 年份
+	 * @param isLeapYear 是否闰年
+	 * @return 天
+	 * @since 5.4.2
+	 */
+	public static int lengthOfMonth(int month, boolean isLeapYear) {
+		return java.time.Month.of(month).length(isLeapYear);
 	}
 
 	// ------------------------------------------------------------------------ Private method start

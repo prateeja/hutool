@@ -1,5 +1,6 @@
 package cn.hutool.core.util;
 
+import cn.hutool.core.bean.NullWrapperBean;
 import cn.hutool.core.convert.BasicType;
 import cn.hutool.core.exceptions.UtilException;
 import cn.hutool.core.io.FileUtil;
@@ -144,7 +145,14 @@ public class ClassUtil {
 		Object obj;
 		for (int i = 0; i < objects.length; i++) {
 			obj = objects[i];
-			classes[i] = (null == obj) ? Object.class : obj.getClass();
+			if (obj instanceof NullWrapperBean) {
+				// 自定义null值的参数类型
+				classes[i] = ((NullWrapperBean<?>) obj).getWrappedClass();
+			} else if (null == obj) {
+				classes[i] = Object.class;
+			} else {
+				classes[i] = obj.getClass();
+			}
 		}
 		return classes;
 	}
@@ -539,7 +547,7 @@ public class ClassUtil {
 	 *
 	 * <pre>
 	 * 1、获取当前线程的ContextClassLoader
-	 * 2、获取{@link ClassUtil}类对应的ClassLoader
+	 * 2、获取{@link ClassLoaderUtil}类对应的ClassLoader
 	 * 3、获取系统ClassLoader（{@link ClassLoader#getSystemClassLoader()}）
 	 * </pre>
 	 *
@@ -713,7 +721,7 @@ public class ClassUtil {
 		if (null == clazz) {
 			return false;
 		}
-		return BasicType.wrapperPrimitiveMap.containsKey(clazz);
+		return BasicType.WRAPPER_PRIMITIVE_MAP.containsKey(clazz);
 	}
 
 	/**
@@ -798,11 +806,11 @@ public class ClassUtil {
 		// 基本类型
 		if (targetType.isPrimitive()) {
 			// 原始类型
-			Class<?> resolvedPrimitive = BasicType.wrapperPrimitiveMap.get(sourceType);
+			Class<?> resolvedPrimitive = BasicType.WRAPPER_PRIMITIVE_MAP.get(sourceType);
 			return targetType.equals(resolvedPrimitive);
 		} else {
 			// 包装类型
-			Class<?> resolvedWrapper = BasicType.primitiveWrapperMap.get(sourceType);
+			Class<?> resolvedWrapper = BasicType.PRIMITIVE_WRAPPER_MAP.get(sourceType);
 			return resolvedWrapper != null && targetType.isAssignableFrom(resolvedWrapper);
 		}
 	}
@@ -942,10 +950,7 @@ public class ClassUtil {
 	 */
 	public static Class<?> getTypeArgument(Class<?> clazz, int index) {
 		final Type argumentType = TypeUtil.getTypeArgument(clazz, index);
-		if (argumentType instanceof Class) {
-			return (Class<?>) argumentType;
-		}
-		return null;
+		return TypeUtil.getClass(argumentType);
 	}
 
 	/**

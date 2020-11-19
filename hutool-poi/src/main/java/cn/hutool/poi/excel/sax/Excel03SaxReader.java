@@ -14,7 +14,19 @@ import org.apache.poi.hssf.eventusermodel.MissingRecordAwareHSSFListener;
 import org.apache.poi.hssf.eventusermodel.dummyrecord.LastCellOfRowDummyRecord;
 import org.apache.poi.hssf.eventusermodel.dummyrecord.MissingCellDummyRecord;
 import org.apache.poi.hssf.model.HSSFFormulaParser;
-import org.apache.poi.hssf.record.*;
+import org.apache.poi.hssf.record.BOFRecord;
+import org.apache.poi.hssf.record.BlankRecord;
+import org.apache.poi.hssf.record.BoolErrRecord;
+import org.apache.poi.hssf.record.BoundSheetRecord;
+import org.apache.poi.hssf.record.CellValueRecordInterface;
+import org.apache.poi.hssf.record.EOFRecord;
+import org.apache.poi.hssf.record.FormulaRecord;
+import org.apache.poi.hssf.record.LabelRecord;
+import org.apache.poi.hssf.record.LabelSSTRecord;
+import org.apache.poi.hssf.record.NumberRecord;
+import org.apache.poi.hssf.record.Record;
+import org.apache.poi.hssf.record.SSTRecord;
+import org.apache.poi.hssf.record.StringRecord;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 
@@ -30,7 +42,7 @@ import java.util.List;
  *
  * @author looly
  */
-public class Excel03SaxReader extends AbstractExcelSaxReader<Excel03SaxReader> implements HSSFListener {
+public class Excel03SaxReader implements HSSFListener, ExcelSaxReader<Excel03SaxReader> {
 
 	/**
 	 * 如果为公式，true表示输出公式计算后的结果值，false表示输出公式本身
@@ -83,18 +95,18 @@ public class Excel03SaxReader extends AbstractExcelSaxReader<Excel03SaxReader> i
 
 	// ------------------------------------------------------------------------------ Read start
 	@Override
-	public Excel03SaxReader read(File file, int rid) throws POIException {
+	public Excel03SaxReader read(File file, String idOrRid) throws POIException {
 		try {
-			return read(new POIFSFileSystem(file), rid);
+			return read(new POIFSFileSystem(file), idOrRid);
 		} catch (IOException e) {
 			throw new POIException(e);
 		}
 	}
 
 	@Override
-	public Excel03SaxReader read(InputStream excelStream, int rid) throws POIException {
+	public Excel03SaxReader read(InputStream excelStream, String idOrRid) throws POIException {
 		try {
-			return read(new POIFSFileSystem(excelStream), rid);
+			return read(new POIFSFileSystem(excelStream), idOrRid);
 		} catch (IOException e) {
 			throw new POIException(e);
 		}
@@ -104,12 +116,12 @@ public class Excel03SaxReader extends AbstractExcelSaxReader<Excel03SaxReader> i
 	 * 读取
 	 *
 	 * @param fs  {@link POIFSFileSystem}
-	 * @param rid sheet序号
+	 * @param id sheet序号
 	 * @return this
 	 * @throws POIException IO异常包装
 	 */
-	public Excel03SaxReader read(POIFSFileSystem fs, int rid) throws POIException {
-		this.rid = rid;
+	public Excel03SaxReader read(POIFSFileSystem fs, String id) throws POIException {
+		this.rid = Integer.parseInt(id);
 
 		formatListener = new FormatTrackingHSSFListener(new MissingRecordAwareHSSFListener(this));
 		final HSSFRequest request = new HSSFRequest();
@@ -263,10 +275,10 @@ public class Excel03SaxReader extends AbstractExcelSaxReader<Excel03SaxReader> i
 						// This is stored in the next record
 						isOutputNextStringRecord = true;
 					} else {
-						value = formatListener.formatNumberDateCell(formulaRec);
+						value = ExcelSaxUtil.getNumberOrDateValue(formulaRec, formulaRec.getValue(), this.formatListener);
 					}
 				} else {
-					value = StrUtil.wrap(HSSFFormulaParser.toFormulaString(stubWorkbook, formulaRec.getParsedExpression()), "\"");
+					value = HSSFFormulaParser.toFormulaString(stubWorkbook, formulaRec.getParsedExpression());
 				}
 				addToRowCellList(formulaRec, value);
 				break;
@@ -293,23 +305,7 @@ public class Excel03SaxReader extends AbstractExcelSaxReader<Excel03SaxReader> i
 				break;
 			case NumberRecord.sid: // 数字类型
 				final NumberRecord numrec = (NumberRecord) record;
-				final String formatString = formatListener.getFormatString(numrec);
-				if (StrUtil.contains(formatString, StrUtil.DOT)) {
-					//浮点数
-					value = numrec.getValue();
-				} else if (StrUtil.containsAny(formatString, StrUtil.SLASH, StrUtil.COLON, "年", "月", "日", "时", "分", "秒")) {
-					//日期
-					value = ExcelSaxUtil.getDateValue(numrec.getValue());
-				} else {
-					final double doubleValue = numrec.getValue();
-					final long longPart = (long) doubleValue;
-					// 对于无小数部分的数字类型，转为Long，否则保留原数字
-					if (((double) longPart) == doubleValue) {
-						value = longPart;
-					} else {
-						value = doubleValue;
-					}
-				}
+				value = ExcelSaxUtil.getNumberOrDateValue(numrec, numrec.getValue(), this.formatListener);
 				// 向容器加入列值
 				addToRowCellList(numrec, value);
 				break;
